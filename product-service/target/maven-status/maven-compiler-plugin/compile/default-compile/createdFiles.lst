@@ -1,0 +1,15 @@
+com\etiya\productservice\ProductServiceApplication.class
+com\etiya\productservice\controllers\ProductsController.class
+com\etiya\productservice\services\dtos\responses\GetByIdProductResponse.class
+com\etiya\productservice\services\dtos\responses\UpdatedProductResponse.class
+com\etiya\productservice\services\dtos\responses\CreatedProductResponse.class
+com\etiya\productservice\controllers\GlobalExceptionHandler.class
+com\etiya\productservice\entities\Product.class
+com\etiya\productservice\services\dtos\responses\GetAllProductsResponse.class
+com\etiya\productservice\services\dtos\requests\UpdateProductRequest.class
+com\etiya\productservice\services\dtos\responses\DeletedProductResponse.class
+com\etiya\productservice\services\exceptions\BusinessException.class
+com\etiya\productservice\repositories\ProductRepository.class
+com\etiya\productservice\services\abstracts\ProductService.class
+com\etiya\productservice\services\concretes\ProductManager.class
+com\etiya\productservice\services\dtos\requests\CreateProductRequest.class
