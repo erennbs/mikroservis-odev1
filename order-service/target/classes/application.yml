@@ -5,12 +5,13 @@ spring:
   application:
     name: order-service
 
-  # H2 in-memory database backing the Transactional Outbox table.
+  # PostgreSQL: hem orders hem outbox_events tablosu burada; Debezium bu DB'yi (WAL) dinler.
+  # (infra/podman-compose.yml -> postgres, host portu 5433, veritabani orderdb)
   datasource:
-    url: jdbc:h2:mem:orderdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ""
+    url: jdbc:postgresql://localhost:5433/orderdb
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgres
   jpa:
     hibernate:
       ddl-auto: update
@@ -18,28 +19,10 @@ spring:
     properties:
       hibernate:
         format_sql: true
-  h2:
-    console:
-      enabled: true       # UI: http://<host>:<port>/h2-console  (JDBC URL: jdbc:h2:mem:orderdb, user: sa)
-      path: /h2-console
-      settings:
-        web-allow-others: true
-  cloud:
-    stream:
-      kafka:
-        binder:
-          brokers: localhost:9092
-      bindings:
-        # Producer: the outbox relay sends OrderCreated payloads here -> Kafka topic "order-created"
-        orderCreated-out-0:
-          destination: order-created
 
-# Transactional Outbox polling publisher (Spring @Scheduled).
-outbox:
-  poller:
-    fixed-delay: 15000   # ms between polls
-    batch-size: 100     # max events published per poll
-    max-retry: 5        # relay attempts before an event is marked FAILED
+# NOT: Kafka'ya yayin artik order-service tarafinda degil; Debezium (Kafka Connect)
+# outbox_events tablosuna yapilan insert'leri "order-created" topic'ine yaziyor.
+# Bu yuzden spring.cloud.stream ve outbox.poller ayarlari kaldirildi.
 
 management:
   endpoints:

@@ -1,18 +1,44 @@
 package com.etiya.orderservice.entities;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 
 /**
- * Domain entity. Persistence is in-memory for now; later this can be mapped to a DB table.
+ * Order domain entity, persisted to PostgreSQL.
+ *
+ * <p>The order write and the {@link com.etiya.orderservice.outbox.OutboxEvent outbox} write happen
+ * in the same DB transaction, so an OrderCreated event is durably queued atomically with the order.
+ * Debezium (CDC) then streams the outbox insert from Postgres' WAL to Kafka.</p>
  */
+@Entity
+@Table(name = "orders")
 public class Order {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
+
+    @Column(nullable = false)
     private int customerId;
+
+    @Column(nullable = false)
     private int productId;
+
+    @Column(nullable = false)
     private int quantity;
+
+    @Column(nullable = false)
     private BigDecimal unitPrice;
+
+    @Column(nullable = false)
     private BigDecimal totalPrice;
+
     private String address;
 
     public Order() {

@@ -14,6 +14,7 @@ import com.etiya.orderservice.services.dtos.responses.GetByIdOrderResponse;
 import com.etiya.orderservice.services.dtos.responses.UpdatedOrderResponse;
 import com.etiya.orderservice.services.exceptions.BusinessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -25,9 +26,6 @@ import java.util.List;
 @Service
 public class OrderManager implements OrderService {
 
-    /** Output binding the OrderCreated message is relayed to (topic mapped in application.yml). */
-    private static final String ORDER_CREATED_BINDING = "orderCreated-out-0";
-
     private final OrderRepository orderRepository;
     private final OutboxService outboxService;
 
@@ -37,6 +35,7 @@ public class OrderManager implements OrderService {
     }
 
     @Override
+    @Transactional
     public CreatedOrderResponse add(CreateOrderRequest request) {
         Order order = new Order();
         order.setCustomerId(request.getCustomerId());
@@ -48,13 +47,13 @@ public class OrderManager implements OrderService {
 
         Order saved = orderRepository.save(order);
 
-        // Transactional Outbox: queue OrderCreated in the outbox table instead of publishing to
-        // Kafka inline. The polling relay (OutboxMessageRelay) forwards it to product-service.
+        // Transactional Outbox: insert OrderCreated into the outbox table in the SAME transaction as
+        // the order write (atomic). Debezium then streams the insert from the WAL to Kafka; there is
+        // no inline broker publish and no polling relay anymore.
         outboxService.record(
                 "Order",
                 String.valueOf(saved.getId()),
                 "OrderCreated",
-                ORDER_CREATED_BINDING,
                 new OrderCreatedEvent(
                         saved.getId(),
                         saved.getCustomerId(),

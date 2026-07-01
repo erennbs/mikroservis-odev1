@@ -1,18 +1,14 @@
 package com.etiya.orderservice.outbox;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
+import java.util.UUID;
 
 /**
  * Spring Data JPA access to the outbox table.
+ *
+ * <p>Only inserts are performed here; Debezium reads the resulting WAL entries and publishes them
+ * to Kafka, so no polling/query-by-status method is needed anymore.</p>
  */
-public interface OutboxRepository extends JpaRepository<OutboxEvent, Long> {
-
-    /**
-     * Oldest-first batch of events in the given status, used by the polling relay
-     * to publish {@link OutboxStatus#PENDING} messages in insertion order.
-     */
-    List<OutboxEvent> findByStatusOrderByIdAsc(OutboxStatus status, Pageable pageable);
+public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
 }

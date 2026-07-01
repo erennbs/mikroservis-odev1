@@ -4,6 +4,22 @@ server:
 spring:
   application:
     name: product-service
+
+  # PostgreSQL: products + processed_messages (inbox) tablolari burada.
+  # (infra/podman-compose.yml -> postgres, host portu 5433, veritabani productdb)
+  datasource:
+    url: jdbc:postgresql://localhost:5433/productdb
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
   cloud:
     function:
       definition: orderCreated

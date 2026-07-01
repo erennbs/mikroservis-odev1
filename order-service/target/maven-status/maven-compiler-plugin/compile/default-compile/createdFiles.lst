@@ -7,10 +7,13 @@ com\etiya\orderservice\services\concretes\OrderManager.class
 com\etiya\orderservice\controllers\OrdersController.class
 com\etiya\orderservice\services\dtos\responses\CreatedOrderResponse.class
 com\etiya\orderservice\services\dtos\requests\CreateOrderRequest.class
+com\etiya\orderservice\outbox\OutboxService.class
 com\etiya\orderservice\services\exceptions\BusinessException.class
 com\etiya\orderservice\services\dtos\responses\DeletedOrderResponse.class
 com\etiya\orderservice\services\dtos\responses\GetAllOrdersResponse.class
 com\etiya\orderservice\services\dtos\responses\GetByIdOrderResponse.class
 com\etiya\orderservice\OrderServiceApplication.class
+com\etiya\orderservice\outbox\OutboxRepository.class
 com\etiya\orderservice\services\dtos\requests\UpdateOrderRequest.class
+com\etiya\orderservice\outbox\OutboxEvent.class
 com\etiya\orderservice\services\abstracts\OrderService.class
