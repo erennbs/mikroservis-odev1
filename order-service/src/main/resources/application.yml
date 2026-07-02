@@ -10,3 +10,13 @@ spring:
   # configs/order-service/ klasorundeki application-<profil>.yml dosyalarindan ceker.
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  # Guvenlik (OAuth2 Resource Server): Keycloak issuer.
+  # Ayni ayar configs/order-service/application.yml'de de var; ancak config-server'a
+  # push edilmeden lokalde de JWT dogrulama calissin diye burada da tanimli.
+  # Prod'da KEYCLOAK_ISSUER_URI ortam degiskeni ile override edilir.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/etiya}

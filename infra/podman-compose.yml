@@ -175,6 +175,45 @@ services:
     networks:
       - etiya-net
 
+  # ---------------------------------------------------------------------------
+  # Keycloak - Kimlik ve Erisim Yonetimi (IAM / OIDC saglayicisi)
+  #
+  # Tum servisler (gateway + is servisleri) OAuth2 Resource Server olarak
+  # calisir ve JWT'leri bu Keycloak'in "etiya" realm'i uzerinden dogrular.
+  #
+  # - Admin konsolu:  http://localhost:8090  (admin / admin)
+  # - Issuer (realm): http://localhost:8090/realms/etiya
+  # - Acilista ./keycloak/realm-export.json otomatik import edilir
+  #   (--import-realm): "etiya" realm'i, USER/ADMIN rolleri, ornek kullanicilar
+  #   ve "etrade-client" client'i hazir gelir.
+  #
+  # Token almak (password / direct access grant) icin:
+  #   curl -s -X POST \
+  #     http://localhost:8090/realms/etiya/protocol/openid-connect/token \
+  #     -d 'client_id=etrade-client' -d 'grant_type=password' \
+  #     -d 'username=admin' -d 'password=admin123'
+  # ---------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: etiya-keycloak
+    restart: unless-stopped
+    command:
+      - "start-dev"
+      - "--import-realm"
+    environment:
+      # Keycloak yonetici kullanicisi (yalnizca dev/lokal icin).
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # start-dev H2 (in-memory) DB kullanir; lokal gelistirme icin yeterli.
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8090:8080"
+    volumes:
+      # Acilista import edilecek realm tanimi.
+      - ./keycloak:/opt/keycloak/data/import:ro
+    networks:
+      - etiya-net
+
 volumes:
   postgres-data:
   kafka-data:
