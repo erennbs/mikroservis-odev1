@@ -1,7 +1,7 @@
 # gateway-server - TUM profillerde ortak ayarlar.
 server:
   # 8888 artik config-server'a ait oldugu icin gateway 8080'de calisir.
-  port: 8080
+  port: 8000
 
 spring:
   cloud:
