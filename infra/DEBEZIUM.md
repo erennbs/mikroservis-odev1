@@ -8,25 +8,51 @@ PostgreSQL'in transaction log'unu (WAL) okuyup `outbox_events` tablosuna yapıla
 order-service ──(aynı DB transaction)──> Postgres(orderdb): orders + outbox_events
                                                 │  (WAL)
                                                 ▼
-                                   Debezium / Kafka Connect
+                                   Debezium / Kafka Connect  (order-outbox-connector)
                                                 │
                                                 ▼
                                    Kafka topic: order-created
-                                                │
-                                                ▼
-product-service ──(aynı DB transaction)──> Postgres(productdb): products + processed_messages
-        (Inbox pattern: id header ile dedup → stok yalnızca bir kez düşer)
+                                    │                        │
+                                    ▼                        ▼
+product-service                            payment-service
+ (aynı DB tx)                               (aynı DB tx)
+ productdb: products                        paymentdb: payments + outbox_events
+   + processed_messages (Inbox)              + processed_messages (Inbox)
+ → stok bir kez düşer                        → sipariş başına bir Payment
+                                                    │  (WAL)
+                                                    ▼
+                                     Debezium / Kafka Connect  (payment-outbox-connector)
+                                                    │
+                                                    ▼
+                                       Kafka topic: payment-created
+                                                    │
+                                                    ▼
+                              notification-service (DB YOK, bellekte)
+                               → her ödeme için bir bildirim (best-effort dedup)
 ```
+
+Böylece `order-created` iki bağımsız tüketici grubuna gider (`product-service` stok düşer,
+`payment-service` ödeme oluşturur); `payment-service` ayrıca kendi outbox'ıyla `payment-created`
+üretir ve bunu `notification-service` tüketir. Zincir: **order → payment → notification**.
 
 ## Bileşenler
 - **Postgres** `wal_level=logical` ile çalışır (bkz. `podman-compose.yml` → `postgres.command`).
 - **orderdb** veritabanı ilk açılışta `postgres-init/01-create-orderdb.sql` ile oluşturulur.
 - **connect** servisi = Kafka Connect + Debezium (REST API: `http://localhost:8083`).
-- **order-outbox-connector.json** = Debezium Postgres connector + Outbox Event Router (SMT) konfigürasyonu.
-- **connect-register** servisi = Connect hazır olunca connector'ı otomatik kaydeden tek seferlik
-  yardımcı (idempotent; connector zaten varsa HTTP 409 → sorun değil). Elle POST'a gerek bırakmaz.
+- **order-outbox-connector.json** = orderdb.outbox_events → `order-created` (Outbox Event Router SMT).
+- **payment-outbox-connector.json** = paymentdb.outbox_events → `payment-created`. Ayrı `slot.name`
+  (`payment_outbox_slot`), `publication.name` (`payment_outbox_pub`) ve `topic.prefix` (`paymentdb`)
+  kullanır; farklı veritabanını izlediği için order connector'ı ile çakışmaz.
+- **connect-register** servisi = Connect hazır olunca `infra/debezium/*.json` altındaki TÜM
+  connector'ları otomatik kaydeden tek seferlik yardımcı (idempotent; connector zaten varsa HTTP 409
+  → sorun değil). Elle POST'a gerek bırakmaz.
 - **productdb** = product-service'in DB'si (compose'da `POSTGRES_DB` ile hazır gelir); `products` ve
   `processed_messages` (Inbox) tabloları burada. Consumer idempotency'si bu tabloya dayanır.
+- **paymentdb** = payment-service'in DB'si (`postgres-init/02-create-paymentdb.sql` ile ilk açılışta
+  oluşur); `payments`, `outbox_events` ve `processed_messages` tabloları burada. payment-service hem
+  tüketici (Inbox) hem üreticidir (Outbox).
+- **notification-service** = VERİTABANI YOK. `payment-created` topic'ini dinler, bildirimleri bellekte
+  tutar. Kalıcı Inbox olmadığı için dedup süreç ömrü boyunca best-effort'tur.
 
 ## Çalıştırma Adımları
 
@@ -69,6 +95,11 @@ Invoke-RestMethod http://localhost:8083/connectors/order-outbox-connector/status
 ```
 `connector.state` ve `tasks[].state` = **RUNNING** olmalı.
 
+> Not: Connector'lar artık **iki** DB'yi izler; `connect-register` `orderdb.outbox_events` ve
+> `paymentdb.outbox_events` tabloları oluştuktan (yani order-service **ve** payment-service ilk kez
+> ayağa kalktıktan) sonra çalıştırılmalıdır. `payment-outbox-connector` durumunu da kontrol edin:
+> `Invoke-RestMethod http://localhost:8083/connectors/payment-outbox-connector/status`.
+
 ### 4. product-service'i başlat (Postgres/inbox ile)
 product-service artık `productdb`'ye bağlanır; `products` ve `processed_messages` tablolarını
 Hibernate oluşturur. Stok düşürme yan etkisini görebilmek için önce bir ürün oluşturun:
@@ -80,6 +111,17 @@ Invoke-RestMethod -Method Post -Uri http://localhost:<product-port>/api/products
   -Body '{"name":"Telefon","unitPrice":100,"stock":10,"description":"demo"}'
 ```
 
+### 4b. payment-service ve notification-service'i başlat
+```powershell
+mvn -pl payment-service spring-boot:run
+mvn -pl notification-service spring-boot:run
+```
+- **payment-service** `paymentdb`'ye bağlanır; `payments`, `outbox_events`, `processed_messages`
+  tablolarını Hibernate oluşturur. `order-created`'ı tüketip her sipariş için bir `Payment` oluşturur
+  (Inbox ile idempotent) ve `PaymentCreated`'ı outbox'a yazar → Debezium `payment-created`'a taşır.
+- **notification-service** veritabanı kullanmaz; `payment-created`'ı tüketip her ödeme için bellekte
+  bir bildirim oluşturur.
+
 ### 5. Uçtan uca test
 ```powershell
 # Yukarida olusturulan urunun id'si ile siparis ver
@@ -90,6 +132,12 @@ Invoke-RestMethod -Method Post -Uri http://localhost:<order-port>/api/orders `
 Beklenen: `order-created` topic'ine bir mesaj düşer, **product-service** log'unda
 `OrderCreated processed ...` ve `Stock updated: productId=1 10 -> 8` görülür. Polling gecikmesi
 (eski 15 sn) yerine olay ~anında akar.
+
+Aynı olayı **payment-service** de tüketir: log'unda `OrderCreated processed ...` görünür ve bir
+`Payment` oluşur (`GET /api/payments`). Bu, `payment-created` topic'ine bir mesaj yayar; ardından
+**notification-service** log'unda `Notification created ...` görülür ve bildirim
+`GET /api/notifications` ile listelenir. Tüm çağrılar gateway üzerinden de yapılabilir
+(`http://localhost:8000/api/payments`, `.../api/notifications`).
 
 **Idempotency doğrulaması:** Aynı event'i yeniden teslim ettirin (product-service'i durdurup
 `processed_messages` etkisini görmek için consumer grubunu başa sarabilir ya da connector'ı

@@ -1,37 +1,13 @@
-server:
-  port: 8888
-
 spring:
   application:
     name: gateway-server
-  cloud:
-    gateway:
-      server:
-        webflux:
-          routes:
-            # Gelen tüm /api/products istekleri product-service'e yönlendirilir.
-            # lb:// şeması: hedef adres Eureka'dan çözülür ve load balancing uygulanır.
-            - id: product-service
-              uri: lb://product-service
-              predicates:
-                - Path=/api/products/**
-            - id: order-service
-              uri: lb://order-service
-              predicates:
-                - Path=/api/orders/**
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,gateway
+  # Aktif profil (dev/test/prod). SPRING_PROFILES_ACTIVE ile override edilebilir.
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true # gateway kendini Eureka'ya kaydeder
-    fetch-registry: true # diğer servislerin (product-service) konumlarını Eureka'dan çeker
-  instance:
-    instance-id: ${spring.application.name}:${random.uuid}
-    prefer-ip-address: true
+  # Config Server baglantisi. Servis, tum diger ayarlarini (routes, eureka, port...)
+  # config-server uzerinden configs/gateway-server/ klasorundeki
+  # application-<profil>.yml dosyalarindan ceker.
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}

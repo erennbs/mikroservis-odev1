@@ -138,8 +138,9 @@ services:
   # kaydeder. Boylece elle "POST /connectors" adimina gerek kalmaz.
   # Idempotent'tir: connector zaten varsa (HTTP 409) hata vermez.
   #
-  # NOT: order-service ayakta olmali (outbox_events tablosu olusmus olmali),
-  # aksi halde connector baslar ama izlenecek tabloyu bulamaz.
+  # NOT: order-service VE payment-service ayakta olmali (her iki DB'de de outbox_events
+  # tablosu olusmus olmali), aksi halde connector baslar ama izlenecek tabloyu bulamaz.
+  # infra/debezium/ altindaki tum *.json connector'lari kaydedilir.
   # ---------------------------------------------------------------------------
   connect-register:
     image: docker.io/curlimages/curl:8.11.1
@@ -156,16 +157,21 @@ services:
       - >
         echo 'Connect REST bekleniyor...';
         until curl -sf http://connect:8083/connectors >/dev/null 2>&1; do sleep 3; done;
-        echo 'Connect hazir, connector kaydediliyor...';
+        echo 'Connect hazir, connector(lar) kaydediliyor...';
+        rc=0;
+        for f in /config/*.json; do
+        name=$$(basename "$$f");
         code=$$(curl -s -o /dev/null -w '%{http_code}' -X POST
         -H 'Content-Type: application/json'
-        --data @/config/order-outbox-connector.json
+        --data @"$$f"
         http://connect:8083/connectors);
         if [ "$$code" = "201" ] || [ "$$code" = "409" ]; then
-        echo "Connector hazir (HTTP $$code).";
+        echo "$$name hazir (HTTP $$code).";
         else
-        echo "Connector kaydi BASARISIZ (HTTP $$code)."; exit 1;
-        fi
+        echo "$$name kaydi BASARISIZ (HTTP $$code)."; rc=1;
+        fi;
+        done;
+        exit $$rc
     networks:
       - etiya-net
 

@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: notification-service
+
+  # Aktif profil (dev/test/prod). SPRING_PROFILES_ACTIVE ile override edilebilir.
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # Config Server baglantisi. Servis, tum diger ayarlarini (kafka, eureka, port...)
+  # config-server uzerinden configs/notification-service/ klasorundeki
+  # application-<profil>.yml dosyalarindan ceker.
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
