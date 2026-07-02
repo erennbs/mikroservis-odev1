@@ -1,0 +1,15 @@
+# eureka-server - TUM profillerde ortak ayarlar.
+server:
+  port: 8761
+
+eureka:
+  client:
+    # Eureka'nin kendisi bir client degil; kendini kaydetmez, registry cekmez.
+    register-with-eureka: false
+    fetch-registry: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

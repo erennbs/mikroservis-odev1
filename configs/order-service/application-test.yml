@@ -1,0 +1,20 @@
+# TEST profili: test ortami. Ayri test veritabani, her acilista sema yeniden olusur.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/orderdb_test
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://test-eureka.etiya.com/eureka/
+
+logging:
+  level:
+    com.etiya: DEBUG

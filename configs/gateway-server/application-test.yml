@@ -1,0 +1,9 @@
+# TEST profili: test ortami.
+eureka:
+  client:
+    service-url:
+      defaultZone: http://test-eureka.etiya.com/eureka/
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO

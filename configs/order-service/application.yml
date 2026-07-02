@@ -1,0 +1,26 @@
+# order-service - TUM profillerde ortak ayarlar.
+# NOT: Kafka'ya yayin order-service tarafinda degil; Debezium (Kafka Connect)
+# outbox_events tablosunu dinleyip "order-created" topic'ine yaziyor. Bu yuzden
+# burada spring.cloud.stream / Kafka ayari yoktur.
+server:
+  port: 0
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+eureka:
+  client:
+    register-with-eureka: true # kendini ayağa kalktığın an eurekaya tanıt
+    fetch-registry: true # istenildiğinde diğer servislerin bilgisini çek
+  instance:
+    instance-id: ${spring.application.name}:${random.uuid}
+    prefer-ip-address: true

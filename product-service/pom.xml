@@ -16,6 +16,12 @@
     <description>Product management microservice</description>
 
     <dependencies>
+        <!-- Config Client: acilista konfigurasyonu config-server'dan ceker -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

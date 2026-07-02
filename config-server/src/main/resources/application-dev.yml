@@ -1,0 +1,4 @@
+# DEV profili: yerel gelistirme. Ayrintili loglama acik.
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG

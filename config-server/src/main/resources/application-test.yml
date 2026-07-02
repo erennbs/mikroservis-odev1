@@ -1,0 +1,4 @@
+# TEST profili: test ortami.
+logging:
+  level:
+    org.springframework.cloud.config: INFO

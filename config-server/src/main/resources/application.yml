@@ -1,0 +1,37 @@
+server:
+  # Config Server, tum servislerin acilista konfigurasyonu cektigi ilk durak.
+  # 8888, Spring Cloud Config icin standart/varsayilan porttur; client'lar
+  # spring.config.import ile bu adrese baglanir.
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+
+  # Varsayilan profil dev; SPRING_PROFILES_ACTIVE ile override edilebilir.
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  cloud:
+    config:
+      server:
+        # Git backend: konfigurasyonlar bu reponun kokundeki configs/ klasorunden gelir.
+        # search-paths icindeki {application} placeholder'i, istegi yapan servisin
+        # adiyla degistirilir: configs/product-service, configs/order-service, ...
+        # Boylece configs/<servis>/application-<profil>.yml dosyalari servise sunulur.
+        git:
+          uri: https://github.com/erennbs/mikroservis-odev1.git
+          default-label: master
+          search-paths: configs/{application}
+          clone-on-start: true
+          # NOT: Git backend commit'lenmis+push'lanmis dosyalari sunar. configs/ altinda
+          # yaptigin degisikligin etkili olmasi icin GitHub'a push etmen gerekir.
+          # Yerelde push yapmadan denemek istersen native backend'e gecebilirsin:
+          #   spring.profiles.active=native
+          #   spring.cloud.config.server.native.search-locations=file:./configs/{application}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

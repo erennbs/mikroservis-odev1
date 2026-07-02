@@ -1,0 +1,35 @@
+# gateway-server - TUM profillerde ortak ayarlar.
+server:
+  # 8888 artik config-server'a ait oldugu icin gateway 8080'de calisir.
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # Gelen tum /api/products istekleri product-service'e yonlendirilir.
+            # lb:// semasi: hedef adres Eureka'dan cozulur ve load balancing uygulanir.
+            - id: product-service
+              uri: lb://product-service
+              predicates:
+                - Path=/api/products/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/orders/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+eureka:
+  client:
+    register-with-eureka: true # kendini ayaga kalktigin an eurekaya tanit
+    fetch-registry: true # istenildiginde diger servislerin bilgisini cek
+  instance:
+    instance-id: ${spring.application.name}:${random.uuid}
+    prefer-ip-address: true

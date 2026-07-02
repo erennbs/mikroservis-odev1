@@ -1,50 +1,13 @@
-server:
-  port: 0
-
 spring:
   application:
     name: product-service
 
-  # PostgreSQL: products + processed_messages (inbox) tablolari burada.
-  # (infra/podman-compose.yml -> postgres, host portu 5433, veritabani productdb)
-  datasource:
-    url: jdbc:postgresql://localhost:5433/productdb
-    driver-class-name: org.postgresql.Driver
-    username: postgres
-    password: postgres
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+  # Aktif profil (dev/test/prod). SPRING_PROFILES_ACTIVE ile override edilebilir.
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
-  cloud:
-    function:
-      definition: orderCreated
-    stream:
-      kafka:
-        binder:
-          brokers: localhost:9092
-      bindings:
-        # Consumer: "orderCreated" function reads Kafka topic "order-created"
-        orderCreated-in-0:
-          destination: order-created
-          group: product-service
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true # kendini ayağa kalktığın an eurekaya tanıt
-    fetch-registry: true # istenildiğinde diğer servislerin bilgisini çek
-  instance:
-    instance-id: ${spring.application.name}:${random.uuid}
-    prefer-ip-address: true
+  # Config Server baglantisi. Servis, tum diger ayarlarini (datasource, kafka,
+  # eureka, port...) config-server uzerinden configs/product-service/ klasorundeki
+  # application-<profil>.yml dosyalarindan ceker.
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}

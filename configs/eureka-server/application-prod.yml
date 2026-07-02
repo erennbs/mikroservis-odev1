@@ -1,0 +1,9 @@
+# PROD profili: production. defaultZone ortam degiskeni ile override edilebilir.
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka.etiya.com/eureka/
+
+logging:
+  level:
+    com.netflix.eureka: WARN
