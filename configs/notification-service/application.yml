@@ -9,13 +9,13 @@ server:
 
 spring:
   # Guvenlik: OAuth2 Resource Server. Gelen JWT'ler bu Keycloak realm'ine (issuer)
-  # karsi dogrulanir. Lokal/dev icin varsayilan localhost:8080; prod'da
+  # karsi dogrulanir. Lokal/dev icin varsayilan localhost:8090; prod'da
   # KEYCLOAK_ISSUER_URI ortam degiskeni ile override edilir.
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/etiya}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/etiya}
 
   cloud:
     function:

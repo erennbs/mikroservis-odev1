@@ -6,13 +6,13 @@ server:
 spring:
   # Guvenlik: Gateway'i OAuth2 Resource Server yapar. Gelen JWT'ler bu Keycloak
   # realm'ine (issuer) karsi dogrulanir; gecersizse istek 401 ile reddedilir ve
-  # downstream'e hic gitmez. Lokal/dev icin varsayilan localhost:8080; prod'da
+  # downstream'e hic gitmez. Lokal/dev icin varsayilan localhost:8090; prod'da
   # KEYCLOAK_ISSUER_URI ortam degiskeni ile override edilir.
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/etiya}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/etiya}
 
   cloud:
     gateway:
