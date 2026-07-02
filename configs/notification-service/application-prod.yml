@@ -1,0 +1,16 @@
+# PROD profili: production. Tum baglanti bilgileri ortam degiskenlerinden gelir.
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:kafka:9092}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka.etiya.com/eureka/
+
+logging:
+  level:
+    com.etiya: INFO

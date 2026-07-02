@@ -1,0 +1,25 @@
+# TEST profili: test ortami. Ayri test veritabani, her acilista sema yeniden olusur.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/paymentdb_test
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://test-eureka.etiya.com/eureka/
+
+logging:
+  level:
+    com.etiya: DEBUG

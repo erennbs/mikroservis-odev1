@@ -1,0 +1,42 @@
+# payment-service - TUM profillerde ortak ayarlar.
+# payment-service HEM tuketici HEM ureticidir:
+#   - order-created topic'ini dinler (Spring Cloud Stream consumer, Inbox ile idempotent),
+#   - PaymentCreated'i outbox_events'e yazar; Kafka'ya yayini Debezium (Kafka Connect)
+#     yapar (payment-created topic'i). Bu yuzden burada sadece CONSUMER binding'i vardir.
+# Ortama gore degisen ayarlar (DB, Kafka, Eureka adresleri, log seviyesi)
+# application-{dev,test,prod}.yml dosyalarindadir.
+server:
+  # Rastgele port; instance Eureka'ya kendini kaydeder.
+  port: 0
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+  cloud:
+    function:
+      definition: orderCreated
+    stream:
+      bindings:
+        # Consumer: "orderCreated" fonksiyonu "order-created" Kafka topic'ini dinler.
+        orderCreated-in-0:
+          destination: order-created
+          group: payment-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+eureka:
+  client:
+    register-with-eureka: true # kendini ayağa kalktığın an eurekaya tanıt
+    fetch-registry: true # istenildiğinde diğer servislerin bilgisini çek
+  instance:
+    instance-id: ${spring.application.name}:${random.uuid}
+    prefer-ip-address: true

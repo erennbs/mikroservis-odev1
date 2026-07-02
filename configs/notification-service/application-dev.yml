@@ -1,0 +1,16 @@
+# DEV profili: yerel gelistirme (localhost servisleri).
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+logging:
+  level:
+    com.etiya: DEBUG

@@ -1,0 +1,16 @@
+# TEST profili: test ortami.
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://test-eureka.etiya.com/eureka/
+
+logging:
+  level:
+    com.etiya: DEBUG

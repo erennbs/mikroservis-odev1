@@ -1,0 +1,33 @@
+# notification-service - TUM profillerde ortak ayarlar.
+# NOT: Bu servisin VERITABANI YOKTUR; bu yuzden datasource/JPA ayari yoktur.
+# Bildirimler bellekte tutulur. Servis yalnizca payment-created topic'ini dinler.
+# Ortama gore degisen ayarlar (Kafka, Eureka adresleri, log seviyesi)
+# application-{dev,test,prod}.yml dosyalarindadir.
+server:
+  # Rastgele port; instance Eureka'ya kendini kaydeder.
+  port: 0
+
+spring:
+  cloud:
+    function:
+      definition: paymentCreated
+    stream:
+      bindings:
+        # Consumer: "paymentCreated" fonksiyonu "payment-created" Kafka topic'ini dinler.
+        paymentCreated-in-0:
+          destination: payment-created
+          group: notification-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+eureka:
+  client:
+    register-with-eureka: true # kendini ayağa kalktığın an eurekaya tanıt
+    fetch-registry: true # istenildiğinde diğer servislerin bilgisini çek
+  instance:
+    instance-id: ${spring.application.name}:${random.uuid}
+    prefer-ip-address: true
