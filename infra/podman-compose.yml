@@ -176,6 +176,51 @@ services:
       - etiya-net
 
   # ---------------------------------------------------------------------------
+  # Redis - Dagitik (distributed) cache
+  #
+  # product-service GET sonuclarini burada tutar; POST/PUT/DELETE ile invalidate
+  # edilir. Dagitik oldugu icin tum product-service instance'lari ayni cache'i
+  # paylasir. Uygulama baglantisi: localhost:6379 (dev), redis:6379 (container agi).
+  # ---------------------------------------------------------------------------
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: etiya-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - etiya-net
+
+  # ---------------------------------------------------------------------------
+  # Redis Insight - Redis icin web tabanli yonetim/gorsellestirme arayuzu
+  #
+  # Tarayicidan: http://localhost:5540
+  # Ilk acilista bir Redis baglantisi ekleyin:
+  #   Host: redis   Port: 6379   (container agi icinden)
+  # ---------------------------------------------------------------------------
+  redisinsight:
+    image: docker.io/redis/redisinsight:latest
+    container_name: etiya-redisinsight
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight-data:/data
+    networks:
+      - etiya-net
+
+  # ---------------------------------------------------------------------------
   # Keycloak - Kimlik ve Erisim Yonetimi (IAM / OIDC saglayicisi)
   #
   # Tum servisler (gateway + is servisleri) OAuth2 Resource Server olarak
@@ -217,6 +262,8 @@ services:
 volumes:
   postgres-data:
   kafka-data:
+  redis-data:
+  redisinsight-data:
 
 networks:
   etiya-net:
