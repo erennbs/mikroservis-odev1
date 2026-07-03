@@ -22,6 +22,12 @@ spring:
       hibernate:
         format_sql: true
 
+  # Cache store olarak Redis kullan. Baglanti bilgileri (host/port) profile ozel
+  # dosyalardadir (application-{dev,test,prod}.yml). GET sonuclari Redis'te tutulur,
+  # POST/PUT/DELETE ile invalidate edilir (bkz. ProductManager @Cacheable/@CacheEvict).
+  cache:
+    type: redis
+
   cloud:
     function:
       definition: orderCreated
