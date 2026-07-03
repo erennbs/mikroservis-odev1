@@ -1,0 +1,9 @@
+# DOCKER profili: container agi (servisler birbirine servis ismiyle erisir).
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+logging:
+  level:
+    com.netflix.eureka: INFO

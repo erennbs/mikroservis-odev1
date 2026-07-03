@@ -1,0 +1,25 @@
+# DOCKER profili: container agi (kafka/eureka/keycloak servis isimleriyle).
+# NOT: Bu servisin veritabani yoktur; yalnizca Kafka + Eureka + Keycloak ayarlari.
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: kafka:29092
+  # JWT dogrulama: iss host token'lariyla eslessin diye issuer-uri localhost:8090;
+  # JWKS ise container aginda erisilebilir olan Keycloak ic adresinden cekilir.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8090/realms/etiya
+          jwk-set-uri: http://keycloak:8080/realms/etiya/protocol/openid-connect/certs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+logging:
+  level:
+    com.etiya: INFO

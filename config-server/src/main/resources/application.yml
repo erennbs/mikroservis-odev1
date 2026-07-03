@@ -9,29 +9,54 @@ spring:
     name: config-server
 
   # Varsayilan profil dev; SPRING_PROFILES_ACTIVE ile override edilebilir.
+  # Docker'da bu deger "native" verilir (bkz. infra/docker-compose.yml): config-server
+  # o zaman configs/ klasorunu Git yerine mount edilmis volume'den okur.
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-
-  cloud:
-    config:
-      server:
-        # Git backend: konfigurasyonlar bu reponun kokundeki configs/ klasorunden gelir.
-        # search-paths icindeki {application} placeholder'i, istegi yapan servisin
-        # adiyla degistirilir: configs/product-service, configs/order-service, ...
-        # Boylece configs/<servis>/application-<profil>.yml dosyalari servise sunulur.
-        git:
-          uri: https://github.com/erennbs/mikroservis-odev1.git
-          default-label: master
-          search-paths: configs/{application}
-          clone-on-start: true
-          # NOT: Git backend commit'lenmis+push'lanmis dosyalari sunar. configs/ altinda
-          # yaptigin degisikligin etkili olmasi icin GitHub'a push etmen gerekir.
-          # Yerelde push yapmadan denemek istersen native backend'e gecebilirsin:
-          #   spring.profiles.active=native
-          #   spring.cloud.config.server.native.search-locations=file:./configs/{application}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+
+---
+# ============================================================================
+# GIT BACKEND - "native" DISINDAKI profiller (dev/test/prod) icin.
+# Konfigurasyonlar bu reponun GitHub'daki configs/ klasorunden gelir; bu yuzden
+# configs/ altinda yaptigin degisikligin etkili olmasi icin GitHub'a push etmelisin.
+# ============================================================================
+spring:
+  config:
+    activate:
+      on-profile: "!native"
+  cloud:
+    config:
+      server:
+        # Git backend: konfigurasyonlar reponun kokundeki configs/ klasorunden gelir.
+        # search-paths icindeki {application} placeholder'i, istegi yapan servisin
+        # adiyla degistirilir: configs/product-service, configs/order-service, ...
+        git:
+          uri: https://github.com/erennbs/mikroservis-odev1.git
+          default-label: master
+          search-paths: configs/{application}
+          clone-on-start: true
+
+---
+# ============================================================================
+# NATIVE BACKEND - "native" profili (Docker) icin.
+# Git yerine yerel dosya sisteminden okur. docker-compose'da repo kokundeki
+# ./configs klasoru container'a /configs olarak mount edilir; boylece configs/
+# altindaki degisiklikler GitHub'a push edilmeden dogrudan sunulur.
+# {application} placeholder'i istegi yapan servisin adiyla degisir; servisler
+# "docker" profili ile baglanip application-docker.yml dosyalarini ceker.
+# ============================================================================
+spring:
+  config:
+    activate:
+      on-profile: native
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:/configs/{application}

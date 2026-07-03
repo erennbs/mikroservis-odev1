@@ -1,14 +1,25 @@
-# Etiya11 Microservices - Altyapı (Infrastructure) Compose Dosyası
+# Etiya11 Microservices - Altyapı + Uygulama Compose Dosyası
 #
-# Çalıştırmak için:
+# Icerik:
+#   - Altyapi: postgres, kafka, connect (Debezium), redis, redisinsight, keycloak
+#   - Uygulama: config-server, eureka-server, gateway-server, product/order/
+#     payment/notification-service (hepsi multi-stage build ile imajlanir)
+#
+# Calistirmak icin (ilk seferde imajlar build edilir):
 #   cd infra
-#   podman compose -f podman-compose.yml up -d
+#   podman compose -f docker-compose.yml up -d --build
 #
 # Durdurmak için:
-#   podman compose -f podman-compose.yml down
+#   podman compose -f docker-compose.yml down
 #
 # Volume'lerle birlikte tamamen silmek için:
-#   podman compose -f podman-compose.yml down -v
+#   podman compose -f docker-compose.yml down -v
+#
+# NOT: Uygulama servisleri config-server'dan "docker" profili (SPRING_PROFILES_ACTIVE=docker)
+# ile ayar ceker. config-server ise "native" backend ile ../configs klasorunu volume olarak
+# okur; bu sayede configs/ altindaki degisiklikler GitHub'a push edilmeden gecerli olur.
+# Erisim noktalari: Gateway http://localhost:8000  Eureka http://localhost:8761
+#                   Config http://localhost:8888   Keycloak http://localhost:8090
 
 version: "3.8"
 
@@ -256,6 +267,205 @@ services:
     volumes:
       # Acilista import edilecek realm tanimi.
       - ./keycloak:/opt/keycloak/data/import:ro
+    networks:
+      - etiya-net
+
+  # ===========================================================================
+  # UYGULAMA SERVISLERI (Spring Boot mikroservisler)
+  #
+  # Her biri kendi Dockerfile'i ile multi-stage build edilir. Build context repo
+  # kokudur (..), cunku her modulun pom'u kok pom'a (parent) ihtiyac duyar.
+  # Servisler ayarlarini config-server'dan "docker" profili ile ceker
+  # (SPRING_PROFILES_ACTIVE=docker), config-server ise configs/ klasorunu volume
+  # olarak mount edip "native" backend ile sunar (GitHub'a push gerekmez).
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Config Server - tum servislerin ilk basvurdugu konfigurasyon kaynagi.
+  # native backend: /configs volume'unden okur (bkz. config-server application.yml).
+  # ---------------------------------------------------------------------------
+  config-server:
+    build:
+      context: ..
+      dockerfile: config-server/Dockerfile
+    image: etiya/config-server:latest
+    container_name: etiya-config-server
+    restart: unless-stopped
+    environment:
+      # native backend'i aktive eder -> configs/ klasoru /configs'ten sunulur.
+      SPRING_PROFILES_ACTIVE: native
+    volumes:
+      # Repo kokundeki configs/ klasoru; config-server file:/configs/{application} okur.
+      - ../configs:/configs:ro
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - etiya-net
+
+  # ---------------------------------------------------------------------------
+  # Eureka Server - servis kesfi (service discovery).
+  # ---------------------------------------------------------------------------
+  eureka-server:
+    build:
+      context: ..
+      dockerfile: eureka-server/Dockerfile
+    image: etiya/eureka-server:latest
+    container_name: etiya-eureka-server
+    restart: unless-stopped
+    depends_on:
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - etiya-net
+
+  # ---------------------------------------------------------------------------
+  # API Gateway - tek giris noktasi (localhost:8000). JWT'yi Keycloak'a dogrular,
+  # istekleri Eureka'dan cozerek (lb://) ilgili servise yonlendirir.
+  # ---------------------------------------------------------------------------
+  gateway-server:
+    build:
+      context: ..
+      dockerfile: gateway-server/Dockerfile
+    image: etiya/gateway-server:latest
+    container_name: etiya-gateway-server
+    restart: unless-stopped
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+    ports:
+      - "8000:8000"
+    networks:
+      - etiya-net
+
+  # ---------------------------------------------------------------------------
+  # Product Service - urun CRUD + Redis cache. Rastgele port; Eureka'ya kaydolur.
+  # Gateway uzerinden erisilir (host port yayinlanmaz).
+  # ---------------------------------------------------------------------------
+  product-service:
+    build:
+      context: ..
+      dockerfile: product-service/Dockerfile
+    image: etiya/product-service:latest
+    container_name: etiya-product-service
+    restart: unless-stopped
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+    networks:
+      - etiya-net
+
+  # ---------------------------------------------------------------------------
+  # Order Service - siparis. Kendi orderdb'sine yazar; outbox_events'i Debezium izler.
+  # ---------------------------------------------------------------------------
+  order-service:
+    build:
+      context: ..
+      dockerfile: order-service/Dockerfile
+    image: etiya/order-service:latest
+    container_name: etiya-order-service
+    restart: unless-stopped
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+    networks:
+      - etiya-net
+
+  # ---------------------------------------------------------------------------
+  # Payment Service - odeme. order-created'i dinler, paymentdb'ye yazar; outbox
+  # uzerinden payment-created uretir (Debezium).
+  # ---------------------------------------------------------------------------
+  payment-service:
+    build:
+      context: ..
+      dockerfile: payment-service/Dockerfile
+    image: etiya/payment-service:latest
+    container_name: etiya-payment-service
+    restart: unless-stopped
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+    networks:
+      - etiya-net
+
+  # ---------------------------------------------------------------------------
+  # Notification Service - bildirim. payment-created'i dinler; veritabani yoktur.
+  # ---------------------------------------------------------------------------
+  notification-service:
+    build:
+      context: ..
+      dockerfile: notification-service/Dockerfile
+    image: etiya/notification-service:latest
+    container_name: etiya-notification-service
+    restart: unless-stopped
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
     networks:
       - etiya-net
 

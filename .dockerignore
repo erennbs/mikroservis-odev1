@@ -1,0 +1,8 @@
+# Build context'i kucuk tutmak icin gereksiz dosyalari haric tut.
+# (Her servis Dockerfile'i context olarak repo kokunu kullanir.)
+**/target
+.git
+.idea
+.vscode
+docs
+*.md

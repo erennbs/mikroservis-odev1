@@ -1,0 +1,35 @@
+# DOCKER profili: container agi (postgres/kafka/redis/eureka/keycloak servis isimleriyle).
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/productdb
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgres
+  jpa:
+    show-sql: false
+  data:
+    redis:
+      host: redis
+      port: 6379
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: kafka:29092
+  # JWT dogrulama: iss host token'lariyla eslessin diye issuer-uri localhost:8090;
+  # JWKS ise container aginda erisilebilir olan Keycloak ic adresinden cekilir.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8090/realms/etiya
+          jwk-set-uri: http://keycloak:8080/realms/etiya/protocol/openid-connect/certs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+logging:
+  level:
+    com.etiya: INFO
